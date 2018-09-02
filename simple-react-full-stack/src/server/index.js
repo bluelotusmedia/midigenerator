@@ -10,9 +10,8 @@ app.listen(8080, () => midiGen());
 
 
 app.get('/api/midiGen', function (req, res) {
-    midiGen();
-    console.log('requested');
-    res.send({ success: 'success!' });
+    let success = midiGen();
+    res.send({ success });
 });
 
 function midiGen() {
@@ -89,4 +88,19 @@ function midiGen() {
 
         return sequence;
     } 
+    
+    let success = [
+        {
+          "response": {
+            "fileName": "scribbletune-"+notes[0]+"-"+modes[0]+"-"+time+".mid",
+            message: 'chords in '+notes[0]+' '+modes[0]+' generated with a seed of '+rootNum+'!',
+            notes, 
+            modes, 
+            rootNum
+          }
+        }
+    ];
+    
+    
+    return success;
 }
