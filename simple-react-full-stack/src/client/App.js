@@ -3,20 +3,30 @@ import './app.css';
 import * as mm from '@magenta/music';
 import Button from '@material-ui/core/Button';
 import NavBar from './components/NavBar';
-import SimpleMenu from './components/SimpleMenu';
+//import Sequencer from './components/Sequencer';
 import DownloadLink from "react-download-link";
 
+import { MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles';
+import green from '@material-ui/core/colors/green';
+import purple from '@material-ui/core/colors/purple';
+
+const theme = createMuiTheme({
+  palette: {
+    primary: {
+      main: '#43a047',
+    },
+    secondary: {
+      main: '#9575cd',
+    },
+  },
+});
+
 // Instantiate model by loading desired config.
-  const model = new mm.MusicVAE( 'https://storage.googleapis.com/magentadata/js/checkpoints/music_vae/mel_4bar_small_q2');
-  const player = new mm.Player();
+const model = new mm.MusicVAE( 'https://storage.googleapis.com/magentadata/js/checkpoints/music_vae/mel_4bar_small_q2');
+const player = new mm.Player();
 
-
-  function playTune() {
-    mm.Player.tone.context.resume();  // enable audio
-    model.sample(1)
-      .then((samples) => player.start(samples[0], 100));
-  }
-
+// sequencer settings
+const stepNum = 16;
 
 
 export default class App extends Component {
@@ -26,51 +36,88 @@ export default class App extends Component {
     this.state = {
       username: null,
       success: 'false',
-      fileName: null
+      fileName: null,
+      steps: Array(stepNum).fill('-')
     };
-
     
   }
-
+    
     
   componentDidMount() {
-    fetch('/api/getUsername')
-    .then(res => res.json())
-    .then(user => this.setState({ username: user.username }));
+    
   }
     
-  midiGen(test) {
+    
+  midiGen(settings) {
+    
+    const patternString = settings.join("");
       
-    fetch('/api/midiGen')
-    .then(success => success.json())
-    .then(success => {
+    fetch('/api/midiGen?settings='+patternString)
+    .then((success, req) => success.json())
+    .then((success, req) => {
+        
         if(success){
+
            this.setState({
                fileName: success.success[0].response.fileName,
                message: success.success[0].response.message
            })
-           
+
         }
+    })
+    .catch(function(error) {
+      console.log(error)
     }); 
      
   }
-    
+   
+handleStepClick(i) {
+     
+    let steps = this.state.steps.slice(0);
+    if (steps[i] == '-') {
+        steps[i] = 'x'
+    } else {
+        steps[i] = '-'
+    };
+    this.setState({steps: steps})
+}
+
+ 
 
   render() {
     const { username } = this.state;
+   
     return (
-      <div>
+      <MuiThemeProvider theme={theme}>
         <NavBar />
+    
         <p>{this.state.message}</p>
         
-        <DownloadLink filename={this.state.fileName}
-        exportFile={() => "My cached data"}>
-                Download Midi
-        </DownloadLink>
-        <Button variant="contained" color="primary" onClick={this.midiGen.bind(this)}>
+        <div style={{ margin: "0 0 20px 5px",
+            textDecoration: "none",
+            cursor: "pointer"}}>
+           {this.state.steps.map((step, i) => {
+            return <button key={ i } onClick={this.handleStepClick.bind(this, i)}>{step}</button>;
+           })}
+        </div>
+        
+        <Button variant="contained" color="secondary" onClick={this.midiGen.bind(this, this.state.steps)}>
             Generate Midi
         </Button>
-      </div>
+            
+        <DownloadLink 
+        filename={this.state.fileName}
+        exportFile={() => "My midi data"} 
+        tagName="button"
+        label="Download Midi"
+        style={{ margin: "0 0 0 5px",
+            textDecoration: "none",
+            color: "primary",
+            cursor: "pointer"}}>
+                Download Midi
+        </DownloadLink>
+        
+      </MuiThemeProvider>
     );
   }
 }

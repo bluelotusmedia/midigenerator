@@ -1,20 +1,19 @@
 const express = require('express');
-const os = require('os');
 const scribble = require('scribbletune');
 
 const app = express();
 
 app.use(express.static('dist'));
-app.get('/api/getUsername', (req, res) => res.send({ username: os.userInfo().username }));
-app.listen(8080, () => midiGen());
 
+app.listen(8080);
 
-app.get('/api/midiGen', function (req, res) {
-    let success = midiGen();
+app.get('/api/midiGen', (req, res) => {
+    let pattern = req.query.settings;
+    let success = midiGen(pattern);
     res.send({ success });
 });
 
-function midiGen() {
+function midiGen(pattern) {
     // start scribbletune
     var date = new Date();
     var time = date.getTime();
@@ -36,7 +35,7 @@ function midiGen() {
         let modes = ['minor','major'];
         let clip = scribble.clip({
             notes: scribble.progression(notes[0]+' '+modes[0], chooseProgression(rootNum)),
-            pattern: genPattern(rootNum).repeat(4),
+            pattern: pattern,
             subdiv: '3n'
         });
 
