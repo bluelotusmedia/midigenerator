@@ -3,7 +3,6 @@ import './app.css';
 import * as mm from '@magenta/music';
 import Button from '@material-ui/core/Button';
 import NavBar from './components/NavBar';
-//import Sequencer from './components/Sequencer';
 import DownloadLink from "react-download-link";
 
 import { MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles';
@@ -21,10 +20,6 @@ const theme = createMuiTheme({
   },
 });
 
-// Instantiate model by loading desired config.
-const model = new mm.MusicVAE( 'https://storage.googleapis.com/magentadata/js/checkpoints/music_vae/mel_4bar_small_q2');
-const player = new mm.Player();
-
 // sequencer settings
 const stepNum = 16;
 
@@ -41,12 +36,6 @@ export default class App extends Component {
     };
     
   }
-    
-    
-  componentDidMount() {
-    
-  }
-    
     
   midiGen(settings) {
     
@@ -70,6 +59,7 @@ export default class App extends Component {
     }); 
      
   }
+    
    
 handleStepClick(i) {
      
@@ -81,8 +71,6 @@ handleStepClick(i) {
     };
     this.setState({steps: steps})
 }
-
- 
 
   render() {
     const { username } = this.state;
@@ -104,18 +92,10 @@ handleStepClick(i) {
         <Button variant="contained" color="secondary" onClick={this.midiGen.bind(this, this.state.steps)}>
             Generate Midi
         </Button>
-            
-        <DownloadLink 
-        filename={this.state.fileName}
-        exportFile={() => "My midi data"} 
-        tagName="button"
-        label="Download Midi"
-        style={{ margin: "0 0 0 5px",
-            textDecoration: "none",
-            color: "primary",
-            cursor: "pointer"}}>
-                Download Midi
-        </DownloadLink>
+        
+        <Button href={this.state.fileName} 
+        download={this.state.fileName}
+        variant="contained" color="secondary">Download</Button>    
         
       </MuiThemeProvider>
     );

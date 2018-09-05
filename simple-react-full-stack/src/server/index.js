@@ -17,7 +17,8 @@ function midiGen(pattern) {
     // start scribbletune
     var date = new Date();
     var time = date.getTime();
-    var modes = scribble.modes();
+    //var modes = scribble.modes();
+    let modes = ['minor','major'];
     var notes = ["c", "d", "e", "f", "g", "a", "b"]
 
     // random seed number
@@ -32,7 +33,7 @@ function midiGen(pattern) {
     genClip(4)
 
     function genClip(rootNum) {
-        let modes = ['minor','major'];
+        
         let clip = scribble.clip({
             notes: scribble.progression(notes[0]+' '+modes[0], chooseProgression(rootNum)),
             pattern: pattern,
