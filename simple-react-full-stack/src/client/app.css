@@ -6,3 +6,10 @@ body {
   text-align: center;
   margin: auto;
 }
+
+input {margin-right:15px;}
+
+div.MuiFormControl-root-65 {
+    margin: 15px;
+    min-width: 120px;
+}

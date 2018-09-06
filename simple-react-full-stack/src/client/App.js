@@ -1,11 +1,23 @@
 import React, { Component } from 'react';
 import './app.css';
-import Button from '@material-ui/core/Button';
 import NavBar from './components/NavBar';
+import PropTypes from 'prop-types';
+import { withStyles } from '@material-ui/core/styles';
+
+import Button from '@material-ui/core/Button';
+import Input from '@material-ui/core/Input';
+import InputLabel from '@material-ui/core/InputLabel';
+import MenuItem from '@material-ui/core/MenuItem';
+import FormHelperText from '@material-ui/core/FormHelperText';
+import FormControl from '@material-ui/core/FormControl';
+import Select from '@material-ui/core/Select';
+import CustomizedSwitches from './components/CustomizedSwitches';
 
 import { MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles';
 import green from '@material-ui/core/colors/green';
 import purple from '@material-ui/core/colors/purple';
+
+
 
 const theme = createMuiTheme({
   palette: {
@@ -30,9 +42,13 @@ export default class App extends Component {
       stepNumber: 16,
       success: 'false',
       fileName: null,
+      chordsEnabled: true,
       keys: ['Random','C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B'],
       currentKey: 'Random',
-      modes: ['Random','Major','Minor'],
+      modesChords: ['Random','Major','Minor'],
+      modesMelodic: ['Random','Aeolian','Altered','Augmented','Augmented Heptatonic','Balinese','Bebop',
+               'Bebop Dominant','Bebop Locrian','Bebop Major','Bebop Minor','Chromatic','Composite Blues','Diminished','Dorian','Dorian #4','Double Harmonic Lydian','Double Harmonic Major','Egyptian','Enigmatic','Flamenco','Flat Six Pentatonic','Flat Three Pentatonic','Harmonic Major','Harmonic Minor','Hirajoshi','Hungarian Major','Hungarian Minor','Ichikosucho','In-sen','Ionian Augmented','Ionian Pentatonic','Iwato','Kafi Raga','Kumoijoshi','Leading Whole Tone','Locrian','Locrian #2','Locrian Major','Locrian Pentatonic','Lydian','Lydian #5p Pentatonic','Lydian #9','Lydian Augmented','Lydian Diminished','Lydian Dominant','Lydian Dominant Pentatonic','Lydian Minor','Lydian Pentatonic','Major','Major Blues','Major Flat Two Pentatonic','Major Pentatonic','Malkos Raga','Melodic Minor','Melodic Minor Fifth Mode','Melodic Minor Second Mode','Minor #7m Pentatonic','Minor Bebop','Minor Blues','Minor Hexatonic','Minor Pentatonic','Minor Six Diminished','Minor Six Pentatonic','Mixolydian','Mixolydian Pentatonic','Mystery #1','Neopolitan','Neopolitan Major','Neopolitan Major Pentatonic','Neopolitan Minor','Oriental','Pelog','Persian','Phrygian','Piongio','Prometheus','Prometheus Neopolitan','Purvi Raga','Ritusen','Romanian Minor','Scriabin','Six Tone Symmetric','Spanish','Spanish Heptatonic','Super Locrian Pentatonic','Todi Raga','Vietnamese 1','Vietnamese 2','Whole Tone','Whole Tone Pentatonic'],
+      currentModes: ['Random','Major','Minor'],
       currentMode: 'Random',
       progs: ["Random",
               "I,IV,V", 
@@ -45,12 +61,13 @@ export default class App extends Component {
               "IV,ii,V,I",
               "IV,I7,ii7"],
       currentProg: 'Random',
-      divs:["Random","1n","2n","3n","4n","8n","16n"],
+      divs:["Random","1n","2n","4n","8n","16n"],
       currentDiv: 'Random',
       steps: Array(16).fill('-')
     };
       
     this.patternLength = this.patternLength.bind(this);
+    this.toggleChords = this.toggleChords.bind(this);
   }
     
   midiGen(settings) {
@@ -80,7 +97,12 @@ export default class App extends Component {
     }); 
      
   }
-    
+ 
+patternLength(e) { 
+    this.setState({stepNumber: e.target.value});
+    this.setState({steps: Array(Number(e.target.value)).fill('-')});
+
+}
    
 handleStepClick(i) {
      
@@ -96,10 +118,15 @@ handleStepClick(i) {
     this.setState({steps: steps})
 }
     
-patternLength(e) { 
-    this.setState({stepNumber: e.target.value});
-    this.setState({steps: Array(Number(e.target.value)).fill('-')});
-
+toggleChords()  {
+    
+    if (this.state.chordsEnabled==true) {
+        this.setState({currentModes:this.state.modesMelodic})
+    } else {
+        this.setState({currentModes:this.state.modesChords})
+    }
+    
+    this.setState({chordsEnabled: !this.state.chordsEnabled});
 }
     
 changeKey(e) { 
@@ -132,29 +159,68 @@ changeDiv(e) {
         
        Steps (clears pattern): <input onKeyUp={this.patternLength.bind(this)} defaultValue={this.state.stepNumber} size={4} />
     
-        Key: <select onChange={this.changeKey.bind(this)}>
-           {this.state.keys.map((key, i) => {
-            return <option key={ i }>{key}</option>;
-           })}
-        </select>
         
-        Mode: <select onChange={this.changeMode.bind(this)}>
-           {this.state.modes.map((mode, i) => {
-            return <option key={ i }>{mode}</option>;
-           })}
-        </select>
+        <CustomizedSwitches checked={this.state.chordsEnabled} onChange={this.toggleChords} />
         
-        Progression: <select onChange={this.changeProg.bind(this)}>
-           {this.state.progs.map((prog, i) => {
-            return <option key={ i }>{prog}</option>;
-           })}
-        </select>
+            <FormControl>
+             <InputLabel htmlFor="selectKey">Key:</InputLabel>
+              <Select 
+                onChange={this.changeKey.bind(this)}
+                value={this.state.currentKey}
+                inputProps={{
+                  id: 'selectKey'
+                }}
+              >
+               {this.state.keys.map((key, i) => {
+                return <MenuItem key={ i } value={key}>{key}</MenuItem>;
+               })}
+             </Select>
+             </FormControl>
         
-        Divisions: <select onChange={this.changeDiv.bind(this)}>
-           {this.state.divs.map((div, i) => {
-            return <option key={ i }>{div}</option>;
-           })}
-        </select>
+             <FormControl>
+              <InputLabel htmlFor="selectMode">Mode:</InputLabel>
+            <Select 
+                onChange={this.changeMode.bind(this)}
+                value={this.state.currentMode}
+                inputProps={{
+                  id: 'selectMode'
+                }}
+              >
+               {this.state.currentModes.map((mode, i) => {
+                return <MenuItem key={ i } value={mode}>{mode}</MenuItem>;
+               })}
+             </Select>
+             </FormControl>
+            
+             <FormControl>
+             <InputLabel htmlFor="selectProg">Progression:</InputLabel>
+              <Select 
+                onChange={this.changeProg.bind(this)}
+                value={this.state.currentProg}
+                inputProps={{
+                  id: 'selectProg'
+                }}
+              >
+               {this.state.progs.map((prog, i) => {
+                return <MenuItem key={ i } value={prog}>{prog}</MenuItem>;
+               })}
+             </Select>
+            </FormControl>
+             
+             <FormControl>
+             <InputLabel htmlFor="selectDiv"> Divisions:</InputLabel>
+            <Select 
+                onChange={this.changeDiv.bind(this)}
+                value={this.state.currentDiv}
+                inputProps={{
+                  id: 'selectDiv'
+                }}
+              >
+               {this.state.divs.map((div, i) => {
+                return <MenuItem key={ i } value={div}>{div}</MenuItem>;
+               })}
+             </Select>
+             </FormControl>
         
         <div style={{ margin: "0 0 20px 5px",
             textDecoration: "none",
