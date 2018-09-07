@@ -30,9 +30,6 @@ const theme = createMuiTheme({
   },
 });
 
-// sequencer settings
-//const stepNum = 16;
-
 
 export default class App extends Component {
     
@@ -50,7 +47,7 @@ export default class App extends Component {
                'Bebop Dominant','Bebop Locrian','Bebop Major','Bebop Minor','Chromatic','Composite Blues','Diminished','Dorian','Dorian #4','Double Harmonic Lydian','Double Harmonic Major','Egyptian','Enigmatic','Flamenco','Flat Six Pentatonic','Flat Three Pentatonic','Harmonic Major','Harmonic Minor','Hirajoshi','Hungarian Major','Hungarian Minor','Ichikosucho','In-sen','Ionian Augmented','Ionian Pentatonic','Iwato','Kafi Raga','Kumoijoshi','Leading Whole Tone','Locrian','Locrian #2','Locrian Major','Locrian Pentatonic','Lydian','Lydian #5p Pentatonic','Lydian #9','Lydian Augmented','Lydian Diminished','Lydian Dominant','Lydian Dominant Pentatonic','Lydian Minor','Lydian Pentatonic','Major','Major Blues','Major Flat Two Pentatonic','Major Pentatonic','Malkos Raga','Melodic Minor','Melodic Minor Fifth Mode','Melodic Minor Second Mode','Minor #7m Pentatonic','Minor Bebop','Minor Blues','Minor Hexatonic','Minor Pentatonic','Minor Six Diminished','Minor Six Pentatonic','Mixolydian','Mixolydian Pentatonic','Mystery #1','Neopolitan','Neopolitan Major','Neopolitan Major Pentatonic','Neopolitan Minor','Oriental','Pelog','Persian','Phrygian','Piongio','Prometheus','Prometheus Neopolitan','Purvi Raga','Ritusen','Romanian Minor','Scriabin','Six Tone Symmetric','Spanish','Spanish Heptatonic','Super Locrian Pentatonic','Todi Raga','Vietnamese 1','Vietnamese 2','Whole Tone','Whole Tone Pentatonic'],
       currentModes: ['Random','Major','Minor'],
       currentMode: 'Random',
-      progs: ["Random",
+      chordProgs: ["Random",
               "I,IV,V", 
               "I,vi,IV,V", 
               "ii,V,I", 
@@ -60,12 +57,37 @@ export default class App extends Component {
               "I,IV,V,ii",
               "IV,ii,V,I",
               "IV,I7,ii7"],
-      currentProg: 'Random',
+      currentProg: "Random",
+      currentProgs: ["Random",
+                     "I,IV,V", 
+                     "I,vi,IV,V", 
+                     "ii,V,I", 
+                     "I,vi,ii,V", 
+                     "I,V,vi,IV", 
+                     "I,IV,vi,V",
+                     "I,IV,V,ii",
+                     "IV,ii,V,I",
+                     "IV,I7,ii7"],
       divs:["Random","1n","2n","4n","8n","16n"],
       currentDiv: 'Random',
+      noteSequences: 
+          ["Random",
+           "Numbers", 
+           "Doubles", 
+           "No Threes", 
+           "All Threes", 
+           "Fibonacci", 
+           "Fibonacci 2",
+           "Fibonacci 3",
+           "Fibonacci 4",
+           "Fibonacci 5",
+           "Magic Square 9-1",
+           "Magic Square 9-2",
+           "Magic Squares 16-1",
+           "Magic Squares 25-1",
+           "Magic Squares 36-1"],
       steps: Array(16).fill('-')
     };
-      
     this.patternLength = this.patternLength.bind(this);
     this.toggleChords = this.toggleChords.bind(this);
   }
@@ -78,8 +100,9 @@ export default class App extends Component {
     let mode = settings[2];
     let prog = settings[3];
     let div = settings[4];
+    let chords = settings[5];
       
-    fetch('/api/midiGen?pattern='+pattern+'&key='+key+'&mode='+mode+'&prog='+prog+'&div='+div)
+    fetch('/api/midiGen?pattern='+pattern+'&key='+key+'&mode='+mode+'&prog='+prog+'&div='+div+'&chords='+chords)
     .then((success, req) => success.json())
     .then((success, req) => {
         
@@ -118,14 +141,21 @@ handleStepClick(i) {
     this.setState({steps: steps})
 }
     
-toggleChords()  {
+toggleChords(e) {
     
     if (this.state.chordsEnabled==true) {
-        this.setState({currentModes:this.state.modesMelodic})
+       
+        this.setState({currentModes:this.state.modesMelodic,
+                       currentProgs:this.state.noteSequences,
+                       currentProg: "Random"
+                
+                       });
     } else {
-        this.setState({currentModes:this.state.modesChords})
+        this.setState({currentModes:this.state.modesChords,
+                       currentProgs:this.state.chordProgs,
+                       currentProg: "Random"
+                      });
     }
-    
     this.setState({chordsEnabled: !this.state.chordsEnabled});
 }
     
@@ -141,13 +171,18 @@ changeMode(e) {
 
 changeProg(e) { 
     let newProg = e.target.value;
-    this.setState({currentProg: newProg});
+    if (this.state.chordsEnabled=='true') {
+        this.setState({currentProg: newProg});
+    } else {
+        this.setState({currentProg: newProg});
+    }
 }
 
 changeDiv(e) { 
     let newDiv = e.target.value;
     this.setState({currentDiv: newDiv});
 }
+    
 
   render() {
    
@@ -160,7 +195,7 @@ changeDiv(e) {
        Steps (clears pattern): <input onKeyUp={this.patternLength.bind(this)} defaultValue={this.state.stepNumber} size={4} />
     
         
-        <CustomizedSwitches checked={this.state.chordsEnabled} onChange={this.toggleChords} />
+        <CustomizedSwitches checked={this.state.chordsEnabled} onChange={this.toggleChords.bind(this)} />
         
             <FormControl>
              <InputLabel htmlFor="selectKey">Key:</InputLabel>
@@ -201,8 +236,9 @@ changeDiv(e) {
                   id: 'selectProg'
                 }}
               >
-               {this.state.progs.map((prog, i) => {
-                return <MenuItem key={ i } value={prog}>{prog}</MenuItem>;
+               {this.state.currentProgs.map((prog, i) => {
+                   return <MenuItem key={ i } value={prog}>{prog}</MenuItem>;
+                
                })}
              </Select>
             </FormControl>
@@ -234,7 +270,8 @@ changeDiv(e) {
          this.state.currentKey,
          this.state.currentMode,
          this.state.currentProg,
-         this.state.currentDiv
+         this.state.currentDiv,
+         this.state.chordsEnabled
         ])}>
             Generate Midi
         </Button>
