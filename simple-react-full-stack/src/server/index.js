@@ -131,6 +131,12 @@ function midiGen(pattern,key,mode,prog,div,chords) {
             24,14,16,15,23,19,
             7,11,27,28,8,30,
             6,32,33,4,35,1
+          ],
+          "Golden Ratio": [
+            1,8,13,1,5,13
+          ],
+          "Golden Ratio 2": [
+            1,7,3,1,4,3,1,6,13
           ]
         }]
     
@@ -176,25 +182,26 @@ function midiGen(pattern,key,mode,prog,div,chords) {
         
         if (mode=="Random") {
             modes.sort(function(a, b){return 0.5 - Math.random()});
-            scale = scribble.scale('D4 '+modes[0]).slice(0);
+            scale = scribble.scale(key+'3 '+modes[0]).slice(0);
             mode = modes[0];
         } else {
-            scale = scribble.scale('D4 '+mode.toLowerCase()).slice(0) 
+            scale = scribble.scale(key+'3 '+mode.toLowerCase()).slice(0) 
         }
+       
         if (prog == 'Random') {
            // random progression
            
            let progKey = Object.keys(progs).sort(function(a, b){return 0.5 - Math.random()})[0]
            let prog = progs[progKey];
            
-           prog.map((x) => melodicSequence.push(scale[valueLengthLoop(x,scale)]));
+           prog.map((x) => melodicSequence.push(scale[valueLengthLoop(x,scale)].toLowerCase()));
            scale = melodicSequence;
            
         } else {
            // progression is set
            prog = progs[prog];
             
-           prog.map((x) => melodicSequence.push(scale[valueLengthLoop(x,scale)]));
+           prog.map((x) => melodicSequence.push(scale[valueLengthLoop(x,scale)].toLowerCase()));
            scale = melodicSequence;
            
         }
@@ -212,9 +219,9 @@ function midiGen(pattern,key,mode,prog,div,chords) {
     }
    
     genClip(4)
-
-    function genClip(rootNum) {
-        
+    
+    function genClip() {
+        console.log(scale);
         let clip = scribble.clip({
             notes: scale,
             pattern: pattern,

@@ -85,7 +85,9 @@ export default class App extends Component {
            "Magic Square 9-2",
            "Magic Squares 16-1",
            "Magic Squares 25-1",
-           "Magic Squares 36-1"],
+           "Magic Squares 36-1",
+           "Golden Ratio",
+           "Golden Ratio 2"],
       steps: Array(16).fill('-')
     };
     this.patternLength = this.patternLength.bind(this);
