@@ -182,10 +182,10 @@ function midiGen(pattern,key,mode,prog,div,chords) {
         
         if (mode=="Random") {
             modes.sort(function(a, b){return 0.5 - Math.random()});
-            scale = scribble.scale(key+'3 '+modes[0]).slice(0);
+            scale = scribble.scale(key+'4 '+modes[0]).slice(0);
             mode = modes[0];
         } else {
-            scale = scribble.scale(key+'3 '+mode.toLowerCase()).slice(0) 
+            scale = scribble.scale(key+'4 '+mode.toLowerCase()).slice(0) 
         }
        
         if (prog == 'Random') {
