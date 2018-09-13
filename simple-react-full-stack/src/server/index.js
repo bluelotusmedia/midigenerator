@@ -1,22 +1,42 @@
 const express = require('express');
 const scribble = require('scribbletune');
+let router = require('express').Router();
+let bodyParser = require('body-parser');
+
+
+
+const everyNote = 'C,C#,D,D#,E,F,F#,G,G#,A,A#,B,'.repeat(20).split(',').map( function(x,i) {
+    return x + '' + Math.floor(i/12);
+});
 
 const app = express();
+
+app.use(bodyParser.json())
 
 app.use(express.static('dist'));
 
 app.listen(8080);
 
-app.get('/api/midiGen', (req, res) => {
-    let pattern = req.query.pattern;
-    let key = req.query.key;
-    let mode = req.query.mode;
-    let prog = req.query.prog;
-    let div = req.query.div;
-    let chords = req.query.chords;
+app.post('/api/midiGen', (req, res) => {
+    
+    let pattern = req.body.pattern;
+    let key = req.body.key;
+    let mode = req.body.mode;
+    let div = req.body.div;
+    let chords = req.body.chords;
+    let prog;
+    
+    if (req.body.inceptionize!=null) {
+        prog = req.body.inceptionize;
+    } else {
+        prog = req.body.prog;
+    }
+    console.log('initial set',prog)
+    
     let success = midiGen(pattern,key,mode,prog,div,chords);
     res.send({ success });
 });
+
 
 function valueLengthLoop(value,array) {
   var newValue = value;
@@ -25,6 +45,10 @@ function valueLengthLoop(value,array) {
   }
   alert(array[newValue]);
   return newValue
+}
+
+function toMidi(note) {
+    return everyNote.indexOf(note);
 }
 
 function midiGen(pattern,key,mode,prog,div,chords) {
@@ -179,6 +203,7 @@ function midiGen(pattern,key,mode,prog,div,chords) {
         modes = scribble.modes();
         let melodicSequence = [];
         let progs = noteSequences[0];
+        let progKey = Object.keys(progs).sort(function(a, b){return 0.5 - Math.random()})[0]
         
         if (mode=="Random") {
             modes.sort(function(a, b){return 0.5 - Math.random()});
@@ -187,17 +212,22 @@ function midiGen(pattern,key,mode,prog,div,chords) {
         } else {
             scale = scribble.scale(key+'4 '+mode.toLowerCase()).slice(0) 
         }
-       
+        
         if (prog == 'Random') {
            // random progression
            
-           let progKey = Object.keys(progs).sort(function(a, b){return 0.5 - Math.random()})[0]
-           let prog = progs[progKey];
+           prog = progs[progKey];
            
            prog.map((x) => melodicSequence.push(scale[valueLengthLoop(x,scale)].toLowerCase()));
            scale = melodicSequence;
            
+        } else if (JSON.stringify(progs).indexOf(String(prog)) == -1) {
+            
+            scale = prog;
+           // inceptionized pattern, no need to select from array
+           
         } else {
+           
            // progression is set
            prog = progs[prog];
             
@@ -205,6 +235,7 @@ function midiGen(pattern,key,mode,prog,div,chords) {
            scale = melodicSequence;
            
         }
+        console.log(scale, 'scale')
     
     }
     
@@ -221,7 +252,6 @@ function midiGen(pattern,key,mode,prog,div,chords) {
     genClip(4)
     
     function genClip() {
-        console.log(scale);
         let clip = scribble.clip({
             notes: scale,
             pattern: pattern,
@@ -270,15 +300,13 @@ function midiGen(pattern,key,mode,prog,div,chords) {
       }
       return newValue
     }
-    
+    //console.log(scale);
     let success = [
         {
           "response": {
             "fileName": "scribbletune-"+key+"-"+mode+"-"+time+".mid",
-            message: type+' in '+key+' '+mode+' generated with a seed of '+rootNum+'!',
-            notes, 
-            modes, 
-            rootNum
+            message: type+' in '+key+' '+mode+' generated with a '+prog+' progression of '+scale+'!',
+            melody1: scale
           }
         }
     ];

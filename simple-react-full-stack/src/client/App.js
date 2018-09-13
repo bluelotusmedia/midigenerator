@@ -2,7 +2,6 @@ import React, { Component } from 'react';
 import './app.css';
 import NavBar from './components/NavBar';
 import PropTypes from 'prop-types';
-import { withStyles } from '@material-ui/core/styles';
 
 import Button from '@material-ui/core/Button';
 import Input from '@material-ui/core/Input';
@@ -12,13 +11,13 @@ import FormHelperText from '@material-ui/core/FormHelperText';
 import FormControl from '@material-ui/core/FormControl';
 import Select from '@material-ui/core/Select';
 import CustomizedSwitches from './components/CustomizedSwitches';
-
+import { withStyles } from '@material-ui/core/styles';
+import Paper from '@material-ui/core/Paper';
+import Grid from '@material-ui/core/Grid';
 import { MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles';
 import green from '@material-ui/core/colors/green';
 import purple from '@material-ui/core/colors/purple';
-
-
-
+const NUM_STEPS = 32; // DO NOT CHANGE.
 const theme = createMuiTheme({
   palette: {
     primary: {
@@ -26,10 +25,14 @@ const theme = createMuiTheme({
     },
     secondary: {
       main: '#9575cd',
-    },
+    },  
   },
+   root: {
+        flexGrow: 1,
+      }
 });
 
+let resultVAE;
 
 export default class App extends Component {
     
@@ -40,6 +43,7 @@ export default class App extends Component {
       success: 'false',
       fileName: null,
       chordsEnabled: true,
+      inceptionizedSequence: null,
       keys: ['Random','C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B'],
       currentKey: 'Random',
       modesChords: ['Random','Major','Minor'],
@@ -93,6 +97,8 @@ export default class App extends Component {
     this.patternLength = this.patternLength.bind(this);
     this.toggleChords = this.toggleChords.bind(this);
   }
+
+
     
   midiGen(settings) {
       
@@ -103,9 +109,31 @@ export default class App extends Component {
     let prog = settings[3];
     let div = settings[4];
     let chords = settings[5];
+    let inceptionize;
       
-    fetch('/api/midiGen?pattern='+pattern+'&key='+key+'&mode='+mode+'&prog='+prog+'&div='+div+'&chords='+chords)
-    .then((success, req) => success.json())
+    if (settings[6]) {
+        inceptionize = settings[6]; 
+    }
+      
+    
+    
+   //fetch('/api/midiGen?pattern='+pattern+'&key='+key+'&mode='+mode+'&prog='+prog+'&div='+div+'&chords='+chords)
+  fetch('/api/midiGen', {
+    method: 'POST',
+    body: JSON.stringify({
+        pattern: pattern,
+        key: key,
+        mode: mode,
+        prog: prog,
+        div: div,
+        chords: chords,
+        inceptionize: inceptionize
+      }),
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    }
+  }).then((success, req) => success.json())
     .then((success, req) => {
         
         if(success){
@@ -114,7 +142,10 @@ export default class App extends Component {
                fileName: success.success[0].response.fileName,
                message: success.success[0].response.message
            })
-
+           if(!settings[6]) {
+               this.generateMusic(success.success[0].response.melody1);
+           }
+           
         }
     })
     .catch((error) => {
@@ -122,7 +153,122 @@ export default class App extends Component {
     }); 
      
   }
- 
+    
+generateMusic = (scale) => {
+        
+        // go to https://goo.gl/magenta/musicvae-checkpoints to see more checkpoint urls
+        // let melodiesModelCheckPoint = 'https://storage.googleapis.com/download.magenta.tensorflow.org/models/music_vae/dljs/mel_big';
+        let melodiesModelCheckPoint = 'https://storage.googleapis.com/download.magenta.tensorflow.org/models/music_vae/dljs/mel_small';
+        let interpolatedNoteSequences;
+        let numInterpolations = 5;
+       
+        var everyNote = 'c,c#,d,d#,e,f,f#,g,g#,a,a#,b,'.repeat(20).split(',').map( function(x,i) {
+            return x + '' + Math.floor(i/12);
+        });
+        
+        let melodies = [[],[]];
+        scale.map((note, i) => {
+          melodies[0].push({pitch: toMidi(note), quantizedStartStep: i, quantizedEndStep: i+1});
+        });
+        
+        let MELODY1 = { notes: melodies[0] };
+        
+       
+        scale.reverse().map((note, i) => {
+          melodies[1].push({pitch: toMidi(note), quantizedStartStep: i, quantizedEndStep: i+1});
+        });
+        
+        let MELODY2 = { notes: melodies[1] };
+        
+       
+        
+        
+        console.log(MELODY1);
+        console.log(MELODY2);
+    
+        
+        new musicvae.MusicVAE(melodiesModelCheckPoint)
+        .initialize()
+        .then((musicVAE) => {
+            return musicVAE.interpolate([MELODY1,MELODY2], numInterpolations);
+        })
+        .then((noteSequences) => { 
+            
+            let notesArray = [];
+            
+            noteSequences.map((seq, i) => {
+                seq.notes.forEach(function(note) {
+                  notesArray.push(toNote(note.pitch));
+                }); 
+            });
+            
+            this.setState({inceptionizedSequence: notesArray});
+                console.log(notesArray, 'generator');
+        });
+       
+        
+        function valueLengthLoop(value,array) {
+          var newValue = value;
+          while (newValue > array.length-1) {
+            newValue += - array.length;
+          }
+          return newValue
+        }
+       
+        function toMidi(note) {
+            
+            console.log(note,'<==in');
+           let newnote;
+           let flatDetector = note.slice(0,2);
+            
+            
+           switch(flatDetector) {
+               case 'db': 
+                newnote = note.replace(/db/gi, 'c#');
+                break;
+               case 'eb': 
+                newnote = note.replace(/eb/gi, 'd#');
+            
+                break;
+               case 'fb': 
+                newnote = note.replace(/fb/gi, 'e#');
+            
+                break;
+               case 'gb':
+                newnote = note.replace(/gb/gi, 'f#');
+            
+                break;
+               case 'ab': 
+                newnote = note.replace(/ab/gi, 'g#');
+            
+                break;
+               case 'bb': 
+                newnote = note.replace(/bb/gi, 'a#');
+            
+                break;
+               case 'cb': 
+                newnote = note.replace(/cb/gi, 'b#');
+            
+                break;
+               case 'b#': 
+                newnote = note.replace(/b#/gi, 'c');
+            
+                break;
+           }
+            if(newnote != undefined) {
+                note = newnote;
+            }
+            console.log(note,'out==>',everyNote.indexOf(note));
+            return everyNote.indexOf(note);
+        }
+        
+        function toNote(midi) {
+            return everyNote[midi];
+        }
+
+    }
+    
+    
 patternLength(e) { 
     this.setState({stepNumber: e.target.value});
     this.setState({steps: Array(Number(e.target.value)).fill('-')});
@@ -191,11 +337,11 @@ changeDiv(e) {
     return (
       <MuiThemeProvider theme={theme}>
         <NavBar />
-    
+        
         <p>{this.state.message}</p>
         
+        
        Steps (clears pattern): <input onKeyUp={this.patternLength.bind(this)} defaultValue={this.state.stepNumber} size={4} />
-    
         
         <CustomizedSwitches checked={this.state.chordsEnabled} onChange={this.toggleChords.bind(this)} />
         
@@ -260,15 +406,26 @@ changeDiv(e) {
              </Select>
              </FormControl>
         
+             
+             
+                 
+            
+            
+       
+            
         <div style={{ margin: "0 0 20px 5px",
             textDecoration: "none",
-            cursor: "pointer"}}>
+            cursor: "pointer"}}> 
+           
            {this.state.steps.map((step, i) => {
             return <Button key={ i } onClick={this.handleStepClick.bind(this, i)} variant="contained" color="secondary">{step}</Button>;
            })}
         </div>
         
-        <Button variant="contained" color="secondary" onClick={this.midiGen.bind(this, [this.state.steps, 
+        
+        
+        <Button variant="contained" color="secondary" onClick={this.midiGen.bind(this, 
+        [this.state.steps, 
          this.state.currentKey,
          this.state.currentMode,
          this.state.currentProg,
@@ -277,6 +434,17 @@ changeDiv(e) {
         ])}>
             Generate Midi
         </Button>
+           
+        <Button  
+        variant="contained" color="secondary" onClick={this.midiGen.bind(this, 
+        [this.state.steps, 
+         this.state.currentKey,
+         this.state.currentMode,
+         this.state.currentProg,
+         this.state.currentDiv,
+         this.state.chordsEnabled,
+         this.state.inceptionizedSequence
+        ])}>Inceptionize</Button>
         
         <Button href={this.state.fileName} 
         download={this.state.fileName}
