@@ -13,3 +13,46 @@ div.MuiFormControl-root-65 {
     margin: 15px;
     min-width: 120px;
 }
+
+.sequencer {
+    width:80%;
+    margin:0 auto;
+    text-align: center;
+    display: flex;
+    font-size: 0;
+    flex-wrap:wrap;
+    padding:0;
+    box-sizing:border-box;
+
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.step {
+    user-select: none;
+    display:inline-block;
+    margin:5px;
+    flex-grow: 1;
+    height:50px; 
+    border-radius: 50px;
+    width: calc(100% * (1/16) - 10px);
+    align-items: stretch;
+    align-self: stretch;
+}
+
+@media (max-width:780px) {
+   .step {
+        width: calc(100% * (1/8) - 10px);
+    } 
+}
+
+.noteoff {
+    background: #999999;
+    
+}
+.noteon {
+    background: #bb0000;
+}
+.sustain {
+    background: #9575cd;
+}

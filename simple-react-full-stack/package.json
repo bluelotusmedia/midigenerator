@@ -10,9 +10,6 @@
     "server": "nodemon src/server/index.js",
     "dev": "concurrently \"npm run server\" \"npm run client\""
   },
-  "proxy": {
-    "/api": "http://localhost:8080"
-  },
   "author": "Jacob Louis (simple-react-full-stack by Sandeep Raveesh)",
   "license": "ISC",
   "dependencies": {

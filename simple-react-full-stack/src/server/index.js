@@ -18,23 +18,26 @@ app.use(express.static('dist'));
 app.listen(8080);
 
 app.post('/api/midiGen', (req, res) => {
-    
+   
     let pattern = req.body.pattern;
     let key = req.body.key;
     let mode = req.body.mode;
     let div = req.body.div;
     let chords = req.body.chords;
-    let prog;
-    
-    if (req.body.inceptionize!=null) {
-        prog = req.body.inceptionize;
-    } else {
-        prog = req.body.prog;
+    let numInterpolations;
+    let prog = req.body.prog;
+   
+    if (req.body.numInterpolations) {
+        numInterpolations = req.body.numInterpolations;
     }
-    console.log('initial set',prog)
+    if (req.body.musicVAE!=undefined) {
+        prog = req.body.musicVAE;
+    }
+
+    let success = midiGen(pattern,key,mode,prog,div,chords,numInterpolations);
     
-    let success = midiGen(pattern,key,mode,prog,div,chords);
     res.send({ success });
+    
 });
 
 
@@ -51,7 +54,7 @@ function toMidi(note) {
     return everyNote.indexOf(note);
 }
 
-function midiGen(pattern,key,mode,prog,div,chords) {
+function midiGen(pattern,key,mode,prog,div,chords,numInterpolations) {
     // start scribbletune
     let date = new Date();
     let time = date.getTime();
@@ -71,7 +74,7 @@ function midiGen(pattern,key,mode,prog,div,chords) {
                  "I,IV,V,ii",
                  "IV,ii,V,I",
                  "IV,I7,ii7"];
-    let divs = ["1n","2n","4n","8n","16n"];
+    let divs = ["1n","2n","4n","8n","16n","1/12","1/32"];
    let noteSequences = [{
           "Numbers": [
             1,2,3,
@@ -164,10 +167,12 @@ function midiGen(pattern,key,mode,prog,div,chords) {
           ]
         }]
     
-    if (pattern.indexOf('x')==-1) {
-        pattern = genPattern(rootNum);
+    if (numInterpolations!=undefined && pattern.indexOf('x')!=-1) {
+        pattern = pattern.repeat(numInterpolations);
+    } else if (pattern.indexOf('x')==-1) {
+        pattern = genPattern(rootNum,pattern);
     } else {
-        // pattern is defined
+        // pattern is set
     }
     
     if (key == 0) {
@@ -177,15 +182,15 @@ function midiGen(pattern,key,mode,prog,div,chords) {
     } else {
         key = notes[Number(key)-1];
     }
-    
-    if (chords == 'true') {
+   
+    if (chords == true) {
         type = 'chords';
         modes = ['minor','major'];
          if (prog == 'Random') {
+             
             // random progression
            progs.sort(function(a, b){return 0.5 - Math.random()});
            prog = progs[0];
-
         } else {
             // progression is set
         }
@@ -221,10 +226,10 @@ function midiGen(pattern,key,mode,prog,div,chords) {
            prog.map((x) => melodicSequence.push(scale[valueLengthLoop(x,scale)].toLowerCase()));
            scale = melodicSequence;
            
-        } else if (JSON.stringify(progs).indexOf(String(prog)) == -1) {
+        } else if (Array.isArray(prog)) {
             
             scale = prog;
-           // inceptionized pattern, no need to select from array
+           // deep dreamed pattern, no need to select from array
            
         } else {
            
@@ -235,7 +240,6 @@ function midiGen(pattern,key,mode,prog,div,chords) {
            scale = melodicSequence;
            
         }
-        console.log(scale, 'scale')
     
     }
     
@@ -271,25 +275,31 @@ function midiGen(pattern,key,mode,prog,div,chords) {
     function isOdd(num) { return num % 2;}
 
 
-    function genPattern(rootNum) {
+    function genPattern(rootNum,pattern) {
 
 
-        let patternArray = ['x_','x-','xx','-x','-_','--','__','_-','_x'];
-        let patternArray2 = ['x--x--x-x--x--x-'];
+        let patternArray = ['x','-','_'];
+        let patternArray2 = pattern.split('');
+        let presets = ['x--x--x-x--x--x-','x-x-x-x-x-x-x-x-',
+                       'xxxxxxxxxxxxxxxx','-xxx-xxx-xxx-xxx',
+                       '--x---x---x---x-','--xx-xxx--xx-xxx',
+                       '--xx-xxx--xx-xxx','--xx--xx--xx--xx',
+                       'x-xxx-xxx-xxx-xx','x_x_xxx-x_x_xxxx',
+                       'x__xx-xxx__xx-xx','x_x_xxx-x_x_xxxx',
+                       '-x--x--x-x--x--x','-x_x-x_x-x__x__x'];
         let sequence = '';
-
+        
+        
         if (!isOdd(rootNum)) {
-             patternArray.forEach(function(val, i){
-
+             patternArray2.forEach(function(val, i){
                 patternArray.sort(function(a, b){return 0.5 - Math.random()});
-                sequence += patternArray[i];
-
+                sequence += patternArray[0];
             })
         } else {
-            sequence = patternArray2[0];
+            presets.sort(function(a, b){return 0.5 - Math.random()})
+            sequence = presets[0];
         }
-
-
+        
         return sequence;
     } 
     
@@ -300,13 +310,14 @@ function midiGen(pattern,key,mode,prog,div,chords) {
       }
       return newValue
     }
-    //console.log(scale);
+    
     let success = [
         {
           "response": {
             "fileName": "scribbletune-"+key+"-"+mode+"-"+time+".mid",
             message: type+' in '+key+' '+mode+' generated with a '+prog+' progression of '+scale+'!',
-            melody1: scale
+            melody1: scale,
+            pattern1: pattern
           }
         }
     ];
