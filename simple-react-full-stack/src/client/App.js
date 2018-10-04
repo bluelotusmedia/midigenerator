@@ -1,10 +1,12 @@
 import React, { Component } from 'react';
 import './app.css';
-
+import P5Wrapper from 'react-p5-wrapper';
+import sketch from './components/Sketch';
 import Button from '@material-ui/core/Button';
 import NavBar from './components/NavBar';
 import Sequencer from './components/Sequencer';
 import StyledButton from './components/StyledButton';
+import Typography from '@material-ui/core/Typography';
 import PropTypes from 'prop-types';
 import Input from '@material-ui/core/Input';
 import InputLabel from '@material-ui/core/InputLabel';
@@ -17,21 +19,31 @@ import { withStyles } from '@material-ui/core/styles';
 import Paper from '@material-ui/core/Paper';
 import Grid from '@material-ui/core/Grid';
 import { MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles';
-import green from '@material-ui/core/colors/green';
-import purple from '@material-ui/core/colors/purple';
 const NUM_STEPS = 32; // DO NOT CHANGE.
 const theme = createMuiTheme({
+  typography: {
+    fontFamily: 'Roboto',
+    fontSize: '5rem'
+  },
   palette: {
+    type: 'dark',
     primary: {
       main: '#43a047',
+      contrastText: '#fff',
     },
     secondary: {
       main: '#9575cd',
-    },  
+    }, 
+    textPrimary: {
+       main: '#ffffff',
+    }
   },
    root: {
         flexGrow: 1,
       }
+});
+const everyNote = 'c,c#,d,d#,e,f,f#,g,g#,a,a#,b,'.repeat(20).split(',').map( function(x,i) {
+    return x + '' + Math.floor(i/12);
 });
 
 let resultVAE;
@@ -47,7 +59,7 @@ export default class App extends Component {
       fileName: null,
       chordsEnabled: true,
       deepdreamedSequence: null,
-      numInterpolations: 5,
+      numInterpolations: 4,
       steps: Array(16).fill('-'),
       stepClasses: Array(16).fill('noteoff'),
       keys: ['Random','C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B'],
@@ -91,6 +103,7 @@ export default class App extends Component {
            "Fibonacci 3",
            "Fibonacci 4",
            "Fibonacci 5",
+           "Lucas 1",
            "Magic Square 9-1",
            "Magic Square 9-2",
            "Magic Squares 16-1",
@@ -107,7 +120,6 @@ export default class App extends Component {
 
     
   midiGen(settings) {    
-      console.log(settings)
     // initial pattern  
     let notes = this.state.keys;
     let pattern = settings[0].join("");
@@ -120,7 +132,8 @@ export default class App extends Component {
     // deep dream  
     let initMelody;
     let interpolations;
-    let musicVAE;
+    let musicVAENotes;
+    let musicVAERhythm;
      
     if (settings[6]) {
         initMelody = settings[6]; 
@@ -129,7 +142,10 @@ export default class App extends Component {
         interpolations = settings[7]; 
     }
     if (settings[8]) {
-        musicVAE = settings[8]; 
+        musicVAENotes = settings[8]; 
+    }
+    if (settings[9]) {
+        musicVAERhythm = settings[9]; 
     }
       
   fetch('/api/midiGen', {
@@ -143,7 +159,8 @@ export default class App extends Component {
         chords: chords,
         initMelody: initMelody,
         numInterpolations: interpolations,
-        musicVAE: musicVAE
+        musicVAENotes: musicVAENotes,
+        musicVAERhythm: musicVAERhythm
       }),
     headers: {
       'Accept': 'application/json',
@@ -181,36 +198,77 @@ export default class App extends Component {
      
   }
     
+valueLengthLoop(value,array) {
+  var newValue = value;
+  while (newValue > array.length-1) {
+    newValue += - array.length;
+  }
+  return newValue
+}
+    
+toNote(midi) {
+    return everyNote[midi];
+}
+    
+scribbletuneToMusicVAE(initRhythm,initMelody){
+    
+    // scribbletune to musicVAE
+    let notes = [];
+    let noteCount = 0;
+    
+    initRhythm.map((val, i) => {
+       
+      switch(val) {
+        case 'x':
+          let thisNote = initMelody[this.valueLengthLoop(noteCount,initMelody)];
+          notes[i] = {pitch: this.toMidi(thisNote), quantizedStartStep: i*2, quantizedEndStep: (i+1)*2};
+          noteCount++
+          break;
+        case '-':
+          i--;
+          break;
+        case '_':
+         if (initRhythm[i-1] == 'x' && initRhythm[i+1] != '_') {
+           notes[i-1].quantizedEndStep += 2;
+         } else if (initRhythm[i-1] == '_' && initRhythm[i+1] != '_') {
+           let underscoreCounter = 0
+           for (let j=0; initRhythm[i-j] == '_'; j++) {
+           underscoreCounter ++;
+
+             if (initRhythm[(i-j)-1] == 'x') {
+               notes[(i-j)-1].quantizedEndStep += (underscoreCounter * 2);
+             }
+
+           }
+         }
+      } // close switch
+
+    });
+    
+    return notes;
+}
+    
 deepDreamMelody = (settings) => {
         if (!settings[6]) { this.setState({message: 'Must generate midi first.'}) } else {
             
             this.setState({message: 'Dreaming... This could take a minute.'})
             
             let initMelody = settings[6]; // initMelody
-
+            let initRhythm = settings[0];
+            let reversedMelody = initMelody.slice(0).reverse();
+            let reversedRhythm = initRhythm.slice(0).reverse();
+            
             // go to https://goo.gl/magenta/musicvae-checkpoints to see more checkpoint urls
-            let melodiesModelCheckPoint = 'https://storage.googleapis.com/download.magenta.tensorflow.org/models/music_vae/dljs/mel_big';
-            //let melodiesModelCheckPoint = 'https://storage.googleapis.com/download.magenta.tensorflow.org/models/music_vae/dljs/mel_small';
+            //let melodiesModelCheckPoint = 'https://storage.googleapis.com/download.magenta.tensorflow.org/models/music_vae/dljs/mel_big';
+            let melodiesModelCheckPoint = 'https://storage.googleapis.com/download.magenta.tensorflow.org/models/music_vae/dljs/mel_small';
             let interpolatedNoteSequences;
             let numInterpolations = settings[7];
-
-            var everyNote = 'c,c#,d,d#,e,f,f#,g,g#,a,a#,b,'.repeat(20).split(',').map( function(x,i) {
-                return x + '' + Math.floor(i/12);
-            });
-
-            let melodies = [[],[]];
-            initMelody.map((note, i) => {
-              melodies[0].push({pitch: toMidi(note), quantizedStartStep: i, quantizedEndStep: i+1});
-            });
-
-            let MELODY1 = { notes: melodies[0] };
-
-
-            initMelody.reverse().map((note, i) => {
-              melodies[1].push({pitch: toMidi(note), quantizedStartStep: i, quantizedEndStep: i+1});
-            });
-
-            let MELODY2 = { notes: melodies[1] };
+            
+            let notes1 = this.scribbletuneToMusicVAE(initRhythm,initMelody);
+            let notes2 = this.scribbletuneToMusicVAE(reversedRhythm,reversedMelody);
+            
+            let MELODY1 = { notes: notes1 };
+            let MELODY2 = { notes: notes2 };
 
 
 
@@ -222,90 +280,103 @@ deepDreamMelody = (settings) => {
             new musicvae.MusicVAE(melodiesModelCheckPoint)
             .initialize()
             .then((musicVAE) => {
+                console.log(numInterpolations)
                 return musicVAE.interpolate([MELODY1,MELODY2], numInterpolations);
             })
             .then((noteSequences) => { 
 
                 let notesArray = [];
-
+                
+                // build notes array
                 noteSequences.map((seq, i) => {
-                    seq.notes.forEach(function(note) {
-                      notesArray.push(toNote(note.pitch));
+                    seq.notes.forEach((note) => {
+                      notesArray.push(this.toNote(note.pitch));
                     }); 
                 });
 
                 settings.push(notesArray);
-                    console.log(notesArray, 'deep dreamed');
+                
+                let rhythmString = "";
+                let noteGrid = Array(32).fill(null);
+                let possibleNotes = Array(16).fill('-');
+                
+                
+                noteSequences.forEach(function(noteSeq){
+                    noteSeq.notes.forEach(function(note) {
+                      possibleNotes[note.quantizedStartStep/2] = 'x';
+                      if (Number(note.quantizedEndStep) > Number(note.quantizedStartStep)+2) {
+                        let sustainCount = 0;
+                        for (let k=Number(note.quantizedEndStep); k>Number(note.quantizedStartStep)+2; k-=2) {
+                          sustainCount++;  
+                          possibleNotes[(Number(note.quantizedStartStep)/2+sustainCount)] = "_";   
+                        } 
+                      }  
+                    });
+                
+                    rhythmString += possibleNotes.join('')
+                })
+
+                
+                settings.push(rhythmString);    
+                    
                 {this.midiGen(settings)}
             });
 
-
-            function valueLengthLoop(value,array) {
-              var newValue = value;
-              while (newValue > array.length-1) {
-                newValue += - array.length;
-              }
-              return newValue
-            }
-
-            function toMidi(note) {
-
-                console.log(note,'<==in');
-               let newnote;
-               let flatDetector = note.slice(0,2);
-
-
-               switch(flatDetector) {
-                   case 'db': 
-                    newnote = note.replace(/db/gi, 'c#');
-                    break;
-                   case 'eb': 
-                    newnote = note.replace(/eb/gi, 'd#');
-
-                    break;
-                   case 'e#': 
-                    newnote = note.replace(/e#/gi, 'f');
-
-                    break;
-                   case 'fb': 
-                    newnote = note.replace(/fb/gi, 'e');
-
-                    break;
-                   case 'gb':
-                    newnote = note.replace(/gb/gi, 'f#');
-
-                    break;
-                   case 'ab': 
-                    newnote = note.replace(/ab/gi, 'g#');
-
-                    break;
-                   case 'bb': 
-                    newnote = note.replace(/bb/gi, 'a#');
-
-                    break;
-                   case 'cb': 
-                    newnote = note.replace(/cb/gi, 'b');
-
-                    break;
-                   case 'b#': 
-                    newnote = note.replace(/b#/gi, 'c');
-
-                    break;
-               }
-                if(newnote != undefined) {
-                    note = newnote;
-                }
-                console.log(note,'out==>',everyNote.indexOf(note));
-                return everyNote.indexOf(note);
-            }
-
-            function toNote(midi) {
-                return everyNote[midi];
-            }
         }
 
     }
-    
+   
+
+
+toMidi(note) {
+
+   let newnote;
+   let flatDetector = note.slice(0,2);
+
+
+   switch(flatDetector) {
+       case 'db': 
+        newnote = note.replace(/db/gi, 'c#');
+        break;
+       case 'eb': 
+        newnote = note.replace(/eb/gi, 'd#');
+
+        break;
+       case 'e#': 
+        newnote = note.replace(/e#/gi, 'f');
+
+        break;
+       case 'fb': 
+        newnote = note.replace(/fb/gi, 'e');
+
+        break;
+       case 'gb':
+        newnote = note.replace(/gb/gi, 'f#');
+
+        break;
+       case 'ab': 
+        newnote = note.replace(/ab/gi, 'g#');
+
+        break;
+       case 'bb': 
+        newnote = note.replace(/bb/gi, 'a#');
+
+        break;
+       case 'cb': 
+        newnote = note.replace(/cb/gi, 'b');
+
+        break;
+       case 'b#': 
+        newnote = note.replace(/b#/gi, 'c');
+
+        break;
+   }
+    if(newnote != undefined) {
+        note = newnote;
+    }
+
+    return everyNote.indexOf(note);
+}
     
 patternLength(e) { 
     this.setState({
@@ -314,7 +385,7 @@ patternLength(e) {
       stepClasses: Array(Number(e.target.value)).fill('noteoff')
     });
 }
-    
+  
 numInterpolations(e) { 
     this.setState({numInterpolations: e.target.value});
 }
@@ -361,7 +432,7 @@ changeDiv(e) {
 }
     
 handleStepClick(i) {
-     console.log(i);
+     
     let steps = this.state.steps.slice(0);
     let stepClasses = this.state.stepClasses.slice(0);
     
@@ -378,7 +449,6 @@ handleStepClick(i) {
     
     this.setState({steps: steps, stepClasses: stepClasses})
 }
-    
 
   render() {
    
@@ -388,10 +458,14 @@ handleStepClick(i) {
         
         <p>{this.state.message}</p>
         
+        <P5Wrapper sketch={sketch} />
         
-       Steps (clears pattern): <input onKeyUp={this.patternLength.bind(this)} defaultValue={this.state.stepNumber} size={2} />
-    
-       Interpolations: <input onKeyUp={this.numInterpolations.bind(this)} defaultValue={this.state.numInterpolations} size={2} />
+       
+        <InputLabel>Steps: </InputLabel>
+        <input onKeyUp={this.patternLength.bind(this)} defaultValue={this.state.stepNumber} size={2} />
+        
+        <InputLabel> Interpolations: </InputLabel>
+        <input onKeyUp={this.numInterpolations.bind(this)} defaultValue={this.state.numInterpolations} size={2} />
         
         <CustomizedSwitches checked={this.state.chordsEnabled} onChange={this.toggleChords.bind(this)} />
         

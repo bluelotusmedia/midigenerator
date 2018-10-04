@@ -7,9 +7,9 @@ const NavBar = () => {
         <div>
         <AppBar position="static">
             <Toolbar>
-                <Typography variant="title" color="inherit">
-                Antandra Midi Generator
-                </Typography>
+                  <Typography variant="headline" color="inherit" >
+                    Antandra Midi Generator
+                  </Typography>
             </Toolbar>
         </AppBar>
         </div>

@@ -1,3 +1,5 @@
+"use strict";
+
 const express = require('express');
 const scribble = require('scribbletune');
 let router = require('express').Router();
@@ -30,8 +32,11 @@ app.post('/api/midiGen', (req, res) => {
     if (req.body.numInterpolations) {
         numInterpolations = req.body.numInterpolations;
     }
-    if (req.body.musicVAE!=undefined) {
-        prog = req.body.musicVAE;
+    if (req.body.musicVAENotes!=undefined) {
+        prog = req.body.musicVAENotes;
+    }
+    if (req.body.musicVAERhythm!=undefined) {
+        pattern = req.body.musicVAERhythm;
     }
 
     let success = midiGen(pattern,key,mode,prog,div,chords,numInterpolations);
@@ -128,6 +133,13 @@ function midiGen(pattern,key,mode,prog,div,chords,numInterpolations) {
             8,8,7,
             6,4
           ],
+          "Lucas 1": [
+            2, 1, 3, 
+            4, 7, 2, 
+            9, 2, 2, 
+            4, 6, 1, 
+            7, 8, 6
+          ],
           "Magic Square 9-1": [
             8,1,6,
             3,5,7,
@@ -167,9 +179,7 @@ function midiGen(pattern,key,mode,prog,div,chords,numInterpolations) {
           ]
         }]
     
-    if (numInterpolations!=undefined && pattern.indexOf('x')!=-1) {
-        pattern = pattern.repeat(numInterpolations);
-    } else if (pattern.indexOf('x')==-1) {
+    if (pattern.indexOf('x')==-1) {
         pattern = genPattern(rootNum,pattern);
     } else {
         // pattern is set
@@ -265,6 +275,7 @@ function midiGen(pattern,key,mode,prog,div,chords,numInterpolations) {
         // convert # to sharp for filename
         var regex = /#/gi;
         key = key.replace(regex, '-sharp');
+        mode = mode.replace(regex, '');
         
         scribble.midi(clip, "scribbletune-"+key+"-"+mode+"-"+time+".mid"); 
     }
@@ -290,7 +301,7 @@ function midiGen(pattern,key,mode,prog,div,chords,numInterpolations) {
         let sequence = '';
         
         
-        if (!isOdd(rootNum)) {
+        if (!isOdd(rootNum) || pattern.length != 16) {
              patternArray2.forEach(function(val, i){
                 patternArray.sort(function(a, b){return 0.5 - Math.random()});
                 sequence += patternArray[0];
