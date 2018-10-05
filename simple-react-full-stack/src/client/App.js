@@ -29,7 +29,6 @@ const theme = createMuiTheme({
     type: 'dark',
     primary: {
       main: '#43a047',
-      contrastText: '#fff',
     },
     secondary: {
       main: '#9575cd',
@@ -91,6 +90,7 @@ export default class App extends Component {
                      "IV,ii,V,I",
                      "IV,I7,ii7"],
       divs:["Random","1n","2n","4n","8n","16n","1/12","1/32"],
+      generatedProg: [1,3,5,7,9],
       currentDiv: '16n',
       noteSequences: 
           ["Random",
@@ -116,7 +116,6 @@ export default class App extends Component {
     this.numInterpolations = this.numInterpolations.bind(this);
     this.toggleChords = this.toggleChords.bind(this);
   }
-
 
     
   midiGen(settings) {    
@@ -187,7 +186,8 @@ export default class App extends Component {
                message: success.success[0].response.message,
                steps: success.success[0].response.pattern1.split(''),
                stepClasses: stepClasses,
-               initMelody: success.success[0].response.melody1
+               initMelody: success.success[0].response.melody1,
+               generatedProg: success.success[0].response.prog
            })
            
         }
@@ -197,7 +197,7 @@ export default class App extends Component {
     }); 
      
   }
-    
+   
 valueLengthLoop(value,array) {
   var newValue = value;
   while (newValue > array.length-1) {
@@ -449,7 +449,6 @@ handleStepClick(i) {
     
     this.setState({steps: steps, stepClasses: stepClasses})
 }
-
   render() {
    
     return (
@@ -458,7 +457,7 @@ handleStepClick(i) {
         
         <p>{this.state.message}</p>
         
-        <P5Wrapper sketch={sketch} />
+        <P5Wrapper sketch={sketch} generatedProg={this.state.generatedProg} />
         
        
         <InputLabel>Steps: </InputLabel>

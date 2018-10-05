@@ -328,7 +328,8 @@ function midiGen(pattern,key,mode,prog,div,chords,numInterpolations) {
             "fileName": "scribbletune-"+key+"-"+mode+"-"+time+".mid",
             message: type+' in '+key+' '+mode+' generated with a '+prog+' progression of '+scale+'!',
             melody1: scale,
-            pattern1: pattern
+            pattern1: pattern,
+            prog: prog
           }
         }
     ];
